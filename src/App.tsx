@@ -87,7 +87,11 @@ export default function App() {
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to save order");
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to save order");
+      }
 
       setSuccess(true);
 
@@ -115,9 +119,9 @@ export default function App() {
         window.open(whatsappUrl, '_blank');
       }, 1500);
 
-    } catch (err) {
-      setError("Something went wrong. Please try again.");
-      console.error(err);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong. Please try again.");
+      console.error("Order submission error:", err);
     } finally {
       setIsSubmitting(false);
     }

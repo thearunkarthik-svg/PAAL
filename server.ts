@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("orders.db");
+const db = new Database("/tmp/orders.db");
 
 // Initialize database
 db.exec(`
@@ -70,12 +70,12 @@ async function startServer() {
       stmt.run(orderNumber, name, phone, chocolate, oreo, mango, total, txn);
 
       // 2. Sync to Google Sheets (Free Apps Script)
-      syncToGoogleSheets(req.body);
+      syncToGoogleSheets(req.body).catch(err => console.error("Sheets sync background error:", err));
 
       res.status(201).json({ success: true, message: "Order saved successfully" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Database error:", error);
-      res.status(500).json({ success: false, message: "Failed to save order" });
+      res.status(500).json({ success: false, message: `Database error: ${error.message}` });
     }
   });
 
