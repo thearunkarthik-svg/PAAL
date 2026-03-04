@@ -1,0 +1,5 @@
+{
+  "name": "Milkshake Stall",
+  "description": "A modern order management system for a milkshake stall with WhatsApp integration and real-time total calculation.",
+  "requestFramePermissions": []
+}
