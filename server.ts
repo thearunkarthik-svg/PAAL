@@ -3,7 +3,6 @@ import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
-import { google } from "googleapis";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,46 +25,27 @@ db.exec(`
   )
 `);
 
-// Google Sheets Helper
-async function appendToGoogleSheet(orderData: any) {
-  const { GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, GOOGLE_SHEET_ID } = process.env;
+// Google Sheets Helper (Free via Apps Script)
+async function syncToGoogleSheets(orderData: any) {
+  const scriptUrl = process.env.GOOGLE_SCRIPT_URL;
 
-  if (!GOOGLE_SERVICE_ACCOUNT_EMAIL || !GOOGLE_PRIVATE_KEY || !GOOGLE_SHEET_ID) {
-    console.warn("Google Sheets credentials missing. Skipping Sheets sync.");
+  if (!scriptUrl) {
+    console.warn("GOOGLE_SCRIPT_URL missing. Skipping Sheets sync.");
     return;
   }
 
   try {
-    const auth = new google.auth.JWT({
-      email: GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      key: GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    const response = await fetch(scriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(orderData),
     });
 
-    const sheets = google.sheets({ version: "v4", auth });
-    
-    const values = [
-      [
-        new Date().toLocaleString(),
-        orderData.orderNumber,
-        orderData.name,
-        orderData.phone,
-        orderData.chocolate,
-        orderData.oreo,
-        orderData.mango,
-        orderData.total,
-        orderData.txn
-      ]
-    ];
-
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: GOOGLE_SHEET_ID,
-      range: "Sheet1!A:I",
-      valueInputOption: "USER_ENTERED",
-      requestBody: { values },
-    });
-    
-    console.log("Order synced to Google Sheets successfully.");
+    if (response.ok) {
+      console.log("Order synced to Google Sheets via Apps Script.");
+    } else {
+      console.error("Failed to sync to Google Sheets:", await response.text());
+    }
   } catch (error) {
     console.error("Error syncing to Google Sheets:", error);
   }
@@ -89,8 +69,8 @@ async function startServer() {
       `);
       stmt.run(orderNumber, name, phone, chocolate, oreo, mango, total, txn);
 
-      // 2. Sync to Google Sheets (Async)
-      appendToGoogleSheet(req.body);
+      // 2. Sync to Google Sheets (Free Apps Script)
+      syncToGoogleSheets(req.body);
 
       res.status(201).json({ success: true, message: "Order saved successfully" });
     } catch (error) {
